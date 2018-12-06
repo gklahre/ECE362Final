@@ -3,9 +3,14 @@
 #include <string.h>
 int change = 0;
 int turns = 0;
+int speedturns = 0;
 int currentState = 0;
-int wheelSize = 32;
+int wheelSize = 222;
 char line[21];
+char line2[21];
+int speedArray[5] = {0, 0, 0, 0, 0};
+int arrLoc = 0;
+
 static void cmd(char b);
 static void init_lcd();
 static void display1(const char * string);
@@ -26,14 +31,27 @@ void tim2_init(void){
 	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
 
 	TIM2->PSC = 47;
-	TIM2->ARR = 1000;
+	TIM2->ARR = 1000-1;
 	TIM2->DIER |= TIM_DIER_UIE;
 	TIM2->CR1 |= TIM_CR1_CEN;
 	NVIC->ISER[0] |= 1 << TIM2_IRQn;
 
 
 }
+/*
+void tim3_init(void){
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
 
+	TIM3->PSC = 48-1;
+	TIM3->ARR = (1000 * 1000) - 1;
+	TIM3->DIER |= TIM_DIER_UIE;
+	TIM3->CR1 |= TIM_CR1_CEN;
+	NVIC->ISER[0] |= 1 << TIM3_IRQn;
+
+
+}
+*/
 void gpio_init(){
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 	GPIOC->MODER |= 1 << 16;
@@ -66,7 +84,7 @@ void TIM2_IRQHandler(){
 	ADC1->CR |= ADC_CR_ADSTART;
 	while(!(ADC1->ISR & ADC_ISR_EOC));
 	float f = (ADC1->DR * 3/ 4095.0);
-	if(f > 1){
+	if(f > .030){
 		if(currentState == 1){
 			change = 0;
 		}else{
@@ -79,20 +97,47 @@ void TIM2_IRQHandler(){
 			change = 0;
 		}
 	}
-	if(change == 8){
+	if(change == 6){
 		if(currentState == 0){
 			currentState = 1;
 			turns++;
+			speedturns++;
 		}
 		if(currentState == 1){
 			currentState = 0;
 		}
 
 	}
-	sprintf(line, "Turns : %2.2f, %d",f,turns);
+	//sprintf(line, "Turns : %2.2f, %d",f,turns);
+	sprintf(line2,"Kilometers: %2.3f",.00222 * turns);
+	//display2(line);
+	display1(line2);
+	sprintf(line,"Turns: %d",turns);
 	display2(line);
 }
+/*
+void TIM3_IRQHandler(){
+	TIM3->SR &= ~TIM_SR_UIF;
 
+	//display2("Here?");
+	int i;
+	int totalTurns = 0;
+	speedArray[arrLoc] = speedturns;
+
+	if(arrLoc == 4){
+		arrLoc = 0;
+	}else{
+		arrLoc++;
+	}
+	for(i=0;i < 5; i++){
+		totalTurns += speedArray[i];
+	}
+	sprintf(line,"Speed: %2.1f kmh",(720 * .00222 * totalTurns));
+	display2(line);
+	speedturns = 0;
+
+}
+*/
 /*
 void TIM2_IRQHandler(){
 	TIM2->SR &= ~TIM_SR_UIF;
@@ -107,9 +152,10 @@ void TIM2_IRQHandler(){
 int main(int argc, char ** argv){
 	adc_init();
 	init_lcd();
+	//tim3_init();
 	tim2_init();
 	gpio_init();
-	display1("Heyo");
+	//display1("Heyo");
 	while(1){};
 	return 0;
 }
